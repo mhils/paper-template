@@ -1,0 +1,23 @@
+\providecommand{\paperroot}{..}
+
+% all packages used by figures, global tikz options, etc. go here.
+
+\usepackage{tikz}
+
+\tikzset{>=stealth}
+
+% all time plots ideally share the same dimensions
+\newcommand{\timeaxis}{
+	\draw[->] (18,0) -- (20+9/12,0);
+	\foreach \year in {18,19,20} {
+		\draw (\year,-15pt) node [right, inner ysep=0] {\small20\year~$\rightarrow$};
+		\foreach \imonth/\month in {0/J,1/F,2/M,3/A,4/M,5/J,6/J,7/A,8/S,9/O,10/N,11/D}{
+			\pgfmathparse{(\year > 18 || \imonth >= 0) && (\year < 20 || \imonth < 9)}
+			\ifnum \pgfmathresult > 0
+				\draw (\year + \imonth/12,0)++(1/24,0) node [below] {\footnotesize \month};
+					\draw (\year + \imonth/12,0) -- ++(0,-3pt); 
+			\fi
+		}
+		\draw (\year,0) -- ++(0,-6pt); 
+	}
+}

@@ -1,0 +1,24 @@
+\documentclass[varwidth=241.14749pt,class=acmart,sigconf,nonacm]{standalone}
+%\documentclass[varwidth=506.295pt,class=acmart,sigconf,nonacm]{standalone}
+\input{common}
+\begin{document}
+\begin{figure}
+	\begin{tikzpicture}[y=.012cm,x=3.1cm]
+		
+		% axes
+		\timeaxis
+		\draw[->] (18,0) -- (18,250);
+		\foreach \y in {50,100,150,200}{
+			\draw (18,\y) -- node [left] {\small\y} ++(-3pt, 0);
+		};
+		
+		% plot data
+		% use scopes to change colors or call custom commands defined here from the data file, but keep styling out of data.
+		\begin{scope}[red]
+			\input{\paperroot/data/data.tex};
+		\end{scope}
+	\end{tikzpicture}
+	\caption{Example Figure}
+	\label{fig:example}
+\end{figure}
+\end{document}
