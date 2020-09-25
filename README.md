@@ -28,7 +28,7 @@ Replace this with the document style wanted by your publication venue.
 \usepackage{standalone}
 ```
 
-This template uses the [standalone](https://ctan.org/pkg/standalone) package to include figures from seperate files. You probably want to read the documentation at some point, it's really excellent. In a nutshell, `standalone` redefines the `\input` command, which now swallows the preamble of each subdocument. This allows subdocuments to stand on their own.
+This template uses the [standalone](https://ctan.org/pkg/standalone) package to include figures from separate files. You probably want to read the documentation at some point, it's really excellent. In a nutshell, `standalone` redefines the `\input` command, which now swallows the preamble of each subdocument. This allows subdocuments to stand on their own.
 
 
 ```latex
