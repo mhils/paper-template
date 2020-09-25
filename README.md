@@ -38,7 +38,8 @@ This template uses the [standalone](https://ctan.org/pkg/standalone) package to 
 This sets the root directory of the paper, which can be used to reference data files in figures (`\input{\paperroot/data/data.tex}`). We need this so that figures can be compiled both individually (with `..` as the root directory) and as part of the main document (with `.` as the root directory).
 
 ```latex
-Column Width: \the\columnwidth\\
+Column Width: \the\columnwidth
+
 Text Width: \the\textwidth
 ```
 
