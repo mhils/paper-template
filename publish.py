@@ -1,13 +1,20 @@
-import subprocess
-import click
-import shutil
+#!/usr/bin/env python3
+"""
+Usage:
+    - pip install click pillow
+    - ./publish.py --help
+"""
+
+from pathlib import Path
 import re
 import shlex
+import shutil
+import subprocess
 import sys
-from pathlib import Path
-from PIL import Image
-from PIL import ImageChops
 from typing import List, Tuple
+
+import click
+from PIL import Image, ImageChops
 
 here = Path(__file__).parent
 
@@ -24,7 +31,14 @@ def dist(paper: Path) -> Path:
     return dist_dir(paper) / paper.name
 
 
-paper_argument = click.argument('paper', default="paper.tex", type=lambda x: Path(x).resolve())
+paper_argument = click.option(
+    "--paper",
+    default="paper.tex",
+    metavar="PATH",
+    type=lambda x: Path(x).resolve(),
+    show_default=True,
+    help="override main document",
+)
 
 
 class NaturalOrderGroup(click.Group):
@@ -34,12 +48,25 @@ class NaturalOrderGroup(click.Group):
 
 @click.group(cls=NaturalOrderGroup)
 def cli():
+    """
+    This script prepares papers for distribution to conferences. It moves your
+    main TeX document and included subdocuments into a dist/ folder, strips
+    all TeX comments, and then checks that the PDF produced from that matches
+    the original PDF.
+
+    Run `publish.py <command> --help` to see what each command does.
+    """
     pass
 
 
 @cli.command()
 @paper_argument
-@click.option('--clean/--no-clean', default=False)
+@click.option(
+    "--clean/--no-clean",
+    default=True,
+    show_default=True,
+    help="Delete a previously existing distribution folder.",
+)
 def run(paper, clean):
     """Run all commands in order."""
     if clean and dist_dir(paper).exists():
@@ -54,7 +81,7 @@ def run(paper, clean):
     ok = _compare(
         paper.with_suffix(".pdf"),
         dist(paper).with_suffix(".pdf"),
-        dist_dir(paper) / ".aux" / "diff"
+        dist_dir(paper) / ".aux" / "diff",
     )
 
     if not ok:
@@ -65,31 +92,44 @@ def run(paper, clean):
         print("❗ Failed.")
 
 
-@cli.command()
+@cli.command(short_help="1. Initialize distribution folder")
 @paper_argument
 def init(paper):
-    """1) Initialize distribution folder."""
+    """
+    This step doesn't do much, it just creates a `dist` folder and copies over the main document.
+    """
     _init(paper)
 
 
-@cli.command()
+@cli.command(short_help="2. Collect all included files")
 @paper_argument
 def collect(paper):
-    """2) Collect all files."""
+    """
+    This step tries to compile the distribution,
+    detects error messages complaining about missing files,
+    copies them over, and then tries again. This makes sure
+    that no unused files are included in the final distribution,
+    which would otherwise be common if your data folder also includes code.
+    """
     _collect(paper)
 
 
-@cli.command()
+@cli.command(short_help="3. Squash all comments")
 @paper_argument
 def squash_comments(paper):
-    """3) Squash all comments"""
+    """
+    This step removes all comments from TeX files in the distribution folder.
+    """
     _squash_comments(paper)
 
 
-@cli.command()
+@cli.command(short_help="4. Compile the distribution")
 @paper_argument
 def compile(paper):
-    """4) Compile the distribution."""
+    """
+    This step runs latexmk on dist/paper.tex again
+    after comments have been stripped in the previous step.
+    """
     proc, missing = _compile(dist(paper))
 
     print("📋 latexmk stdout")
@@ -105,13 +145,21 @@ def compile(paper):
         print("✅ No missing files")
 
 
-@cli.command()
+@cli.command(short_help="5. Compare generated PDFs")
 @paper_argument
-@click.option('--src', 'srcfile', type=click.Path(exists=True), help="override source pdf")
-@click.option('--dist', 'distfile', type=click.Path(exists=True), help="override dist pdf")
-@click.option("--tmpdir", help="override page image directory")
+@click.option(
+    "--src", "srcfile", type=click.Path(exists=True), help="override source pdf"
+)
+@click.option(
+    "--dist", "distfile", type=click.Path(exists=True), help="override dist pdf"
+)
+@click.option("--tmpdir", help="override page image directory", type=click.Path())
 def compare(paper, srcfile, distfile, tmpdir):
-    """5) Visually compare PDFs"""
+    """
+    This step renders both your source PDF and the distribution PDF
+    into PNG files and compares them visually. This ensures that the
+    distribution reproduces your paper exactly.
+    """
     if srcfile:
         a = Path(srcfile)
     else:
@@ -130,7 +178,10 @@ def compare(paper, srcfile, distfile, tmpdir):
 
     if tmpdir.exists():
         if tmpdir != dist_dir(paper) / ".aux" / "diff":
-            click.confirm(f"Temporary directory {tmpdir} already exists. Delete contents?", abort=True)
+            click.confirm(
+                f"Temporary directory {tmpdir} already exists. Delete contents?",
+                abort=True,
+            )
         shutil.rmtree(tmpdir)
 
     _compare(a, b, tmpdir)
@@ -151,17 +202,21 @@ def _compile(paper: Path) -> Tuple[subprocess.CompletedProcess, List[str]]:
         "-shell-escape",
         "-interaction=nonstopmode",
         f"-aux-directory=.aux",
-        str(paper)
+        str(paper),
     ]
     print(f"🔨 Running {shlex.join(cmd)}...")
     proc = subprocess.run(cmd, cwd=paper.parent, capture_output=True, text=True)
 
     # newlines may be anywhere in file paths, so we strip them.
     stdout = (proc.stdout + proc.stderr).replace("\n", "")
-    missing = sorted(set(
-        re.findall(r"LaTeX (?:Error|Warning): File `(.+?)' ?not ?found", stdout)
-        + re.findall(r"Failed to find one or more bibliography files:\s*'(.+?)'", stdout)
-    ))
+    missing = sorted(
+        set(
+            re.findall(r"LaTeX (?:Error|Warning): File `(.+?)' ?not ?found", stdout)
+            + re.findall(
+                r"Failed to find one or more bibliography files:\s*'(.+?)'", stdout
+            )
+        )
+    )
     return proc, missing
 
 
@@ -226,5 +281,5 @@ def _compare(a: Path, b: Path, tmpdir: Path) -> bool:
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
