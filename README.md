@@ -48,12 +48,28 @@ This prints the single column/double column widths for your documentclass, which
 #### `fig/figure.tex`
 
 ```latex
-\documentclass[varwidth=241.14749pt,class=acmart,sigconf,nonacm]{standalone}
-%\documentclass[varwidth=506.295pt,class=acmart,sigconf,nonacm]{standalone}
-\input{common}
+\documentclass{standalonefigure}
 \begin{document}
 ```
 
-The first four lines are the same for all figures. **You must adjust the first two lines to match your main document's `documentclass`.** First, hardcode the document width to the width of a single/double column when compiled in standalone mode (see above). Second, set `class=` to your main document's style and also pass all options. This ensures that your figures use the same widths and font styles when compiled individually.
+Individual figures always have an empty preamble (no additional `\usepackage{}`). 
+If you want to use additional packages, add them in `common.tex`, so that they are available when compiling the main document as well.
 
-If you want to create a double-column figure, comment out the first line, uncomment the second, and swap `figure` with `figure*`.
+
+#### `fig/standalonefigure.cls`
+
+```latex
+\if@twocolumn
+	\LoadClass[varwidth=483.6967pt,class=article,USenglish,oneside,twocolumn]{standalone}
+\else
+	\LoadClass[varwidth=236.1578pt,class=article,USenglish,oneside,twocolumn]{standalone}
+\fi
+```
+
+This part hardcodes the single/double column widths for all standalone figures. **You must adjust both varwidths to match your main document's `documentclass`.**. Second, set `class=` to your main document's style and also pass all options. This ensures that your figures use the same widths and font styles when compiled individually.
+
+Some exceptionally bad LaTeX classes require additional tweaking so that standalone templates render properly. For example, the `dgruyter_NEW` template needs a 
+```
+\advance\voffset6.85pt
+\advance\hoffset21pt
+```
