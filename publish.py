@@ -18,6 +18,7 @@ from PIL import Image, ImageChops
 
 here = Path(__file__).parent
 
+AUXDIR = "tmp"
 
 def dist_dir(paper: Path) -> Path:
     return paper.parent / "dist"
@@ -77,11 +78,11 @@ def run(paper, clean):
     _collect(paper)
     _squash_comments(paper)
     proc, _ = _compile(dist(paper))
-    shutil.rmtree(dist_dir(paper) / ".aux" / "diff", ignore_errors=True)
+    shutil.rmtree(dist_dir(paper) / AUXDIR / "diff", ignore_errors=True)
     ok = _compare(
         paper.with_suffix(".pdf"),
         dist(paper).with_suffix(".pdf"),
-        dist_dir(paper) / ".aux" / "diff",
+        dist_dir(paper) / AUXDIR / "diff",
     )
 
     if not ok:
@@ -174,10 +175,10 @@ def compare(paper, srcfile, distfile, tmpdir):
     elif srcfile or distfile:
         tmpdir = here / "diff"
     else:
-        tmpdir = dist_dir(paper) / ".aux" / "diff"
+        tmpdir = dist_dir(paper) / AUXDIR / "diff"
 
     if tmpdir.exists():
-        if tmpdir != dist_dir(paper) / ".aux" / "diff":
+        if tmpdir != dist_dir(paper) / AUXDIR / "diff":
             click.confirm(
                 f"Temporary directory {tmpdir} already exists. Delete contents?",
                 abort=True,
@@ -201,11 +202,16 @@ def _compile(paper: Path) -> Tuple[subprocess.CompletedProcess, List[str]]:
         "-recorder-",
         "-shell-escape",
         "-interaction=nonstopmode",
-        f"-aux-directory=.aux",
-        str(paper),
+        f"-aux-directory={AUXDIR}",
+        paper.name,
     ]
     print(f"🔨 Running {shlex.join(cmd)}...")
     proc = subprocess.run(cmd, cwd=paper.parent, capture_output=True, text=True)
+
+    log_dir = dist_dir(paper) / AUXDIR
+    log_dir.mkdir(parents=True, exist_ok=True)
+    (log_dir / "latexmk-stdout.txt").write_text(proc.stdout)
+    (log_dir / "latexmk-stderr.txt").write_text(proc.stderr)
 
     # newlines may be anywhere in file paths, so we strip them.
     stdout = (proc.stdout + proc.stderr).replace("\n", "")
@@ -215,6 +221,9 @@ def _compile(paper: Path) -> Tuple[subprocess.CompletedProcess, List[str]]:
             + re.findall(
                 r"Failed to find one or more bibliography files:\s*'(.+?)'", stdout
             )
+            + re.findall(
+                r"Missing input file: '`?(.+?)'", stdout
+            )
         )
     )
     return proc, missing
@@ -222,19 +231,28 @@ def _compile(paper: Path) -> Tuple[subprocess.CompletedProcess, List[str]]:
 
 def _collect(paper: Path) -> None:
     runs = 0
+
     while True:
         runs += 1
         proc, missing = _compile(dist(paper))
         if missing:
             for file in missing:
-                print(f"📄 Copy missing file {file}...")
-                (dist_dir(paper) / file).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy(src_dir(paper) / file, dist_dir(paper) / file)
+                src_file = src_dir(paper) / file
+                dst_file = dist_dir(paper) / file
+                if not src_file.exists():
+                    for src_file in src_file.parent.glob(f"{src_file.name}.*"):
+                        # file extension missing
+                        if not src_file.is_file():
+                            continue
+                        dst_file = dst_file.with_name(src_file.name)
+                        if not dst_file.exists():
+                            break
+                print(f"📄 Copy missing file {src_file.relative_to(src_dir(paper))}...")
+                    
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(src_file, dst_file)
         else:
-            log_dir = dist_dir(paper) / ".aux"
-            (log_dir / "latexmk-stdout.txt").write_text(proc.stdout)
-            (log_dir / "latexmk-stderr.txt").write_text(proc.stderr)
-            print(f"✅ latexmk finished after {runs} iterations (logs at {log_dir}).")
+            print(f"✅ latexmk finished after {runs} iterations.")
             return
 
 
@@ -274,7 +292,7 @@ def _compare(a: Path, b: Path, tmpdir: Path) -> bool:
         if image_a.size == image_b.size and diff.getbbox() is None:
             pass
         else:
-            print("❗ Visual difference on page {i}!")
+            print(f"❗ Visual difference on page {i}!")
             return False
 
     print("✅ No visual differences found.")
