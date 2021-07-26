@@ -208,7 +208,7 @@ def _compile(paper: Path) -> Tuple[subprocess.CompletedProcess, List[str]]:
     print(f"🔨 Running {shlex.join(cmd)}...")
     proc = subprocess.run(cmd, cwd=paper.parent, capture_output=True, text=True)
 
-    log_dir = dist_dir(paper) / AUXDIR
+    log_dir = paper.parent / AUXDIR
     log_dir.mkdir(parents=True, exist_ok=True)
     (log_dir / "latexmk-stdout.txt").write_text(proc.stdout)
     (log_dir / "latexmk-stderr.txt").write_text(proc.stderr)
