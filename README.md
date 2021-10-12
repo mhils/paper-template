@@ -43,7 +43,7 @@ Column Width: \the\columnwidth
 Text Width: \the\textwidth
 ```
 
-This prints the single column/double column widths for your documentclass, which then need to be hardcoded in each figure's preamble (see below).
+This prints the single column/double column widths for your documentclass, which then need to be hardcoded in `fig/standalonefigure.cls` (see below).
 
 #### `fig/figure.tex`
 
