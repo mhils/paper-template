@@ -8,9 +8,11 @@
 \ProcessOptions\relax
 
 \if@twocolumn
-	\LoadClass[varwidth=483.6967pt,class=article,USenglish,oneside,twocolumn]{standalone}
+	\LoadClass[varwidth=483.6967pt]{standalone}
 \else
-	\LoadClass[varwidth=236.1578pt,class=article,USenglish,oneside,twocolumn]{standalone}
+	\LoadClass[varwidth=236.1578pt]{standalone}
 \fi
 
 \input{common}
+% always expand to full width
+\AtBeginEnvironment{figure}{\rule{\maxdimen}{0pt}}
